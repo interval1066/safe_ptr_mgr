@@ -3,58 +3,48 @@
 #include <string>
 #include "ptrmgr.h"
 
-// Example usage:
-class MyClass {
-public:
-    MyClass(int val) : value(val) {
-        std::cout << "MyClass constructor, value: " << value << std::endl;
-    }
-    ~MyClass() {
-        std::cout << "MyClass destructor, value: " << value << std::endl;
-    }
-    void display() const {
-        std::cout << "Value: " << value << std::endl;
-    }
-
-private:
+// Example structs for mixed types
+struct A {
     int value;
+    A(int v) : value(v) {}
 };
 
-class MyOtherClass {
-public:
-    MyOtherClass(std::string val) : value(val) {
-        std::cout << "MyOtherClass constructor, value: " << value << std::endl;
-    }
-    ~MyOtherClass() {
-        std::cout << "MyOtherClass destructor, value: " << value << std::endl;
-    }
-    void display() const {
-        std::cout << "Value: " << value << std::endl;
-    }
+struct B {
+    double value;
+    B(double v) : value(v) {}
+};
 
-private:
+struct C {
     std::string value;
+    C(std::string v) : value(v) {}
 };
 
 int main() {
-    SafePointerManager<MyClass> manager;
-
-    // Create new MyClass objects and add them to the manager
-    manager.add(std::make_unique<MyClass>(10));
-    manager.add(std::make_unique<MyClass>(20));
-    manager.add(std::make_unique<MyOtherClass>("Goodthorp"));
-
-    // Access and use the managed objects
-    manager.get(0)->display();  // Output: Value: 10
-    manager.get(1)->display();  // Output: Value: 20
-	manager.get(2)->display(); 
+    MixedPointerManager manager;
     
-    // Remove an object
-    manager.remove(0);
+    // Add different types of pointers to the manager
+	manager.addPointer(new A(10));
+	manager.addPointer(new B(3.14));
+	manager.addPointer(new C("Now is the time."));
 
-    // Reset the manager (all objects are cleaned up)
-    manager.reset();
+	// Access them by type
+	A* aPtr = manager.getPointer<A>(0);
+	if (aPtr) {
+		std::cout << "A pointer value: " << aPtr->value << std::endl;
+	}
 
-    return EXIT_SUCCESS;
+	B* bPtr = manager.getPointer<B>(1);
+	if (bPtr) {
+		std::cout << "B pointer value: " << bPtr->value << std::endl;
+	}
+
+	C* cPtr = manager.getPointer<C>(2);
+	if (cPtr) {
+		std::cout << "C pointer value: " << cPtr->value << std::endl;
+	}
+
+	// Print all types stored in the pool
+	manager.printTypes();
+
+	return EXIT_SUCCESS;
 }
-
