@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <tuple>
+#include <gtest/gtest.h>
 #include "ptrmgr.h"
 
 // Define an aggregate struct
