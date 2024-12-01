@@ -1,67 +1,82 @@
-#pragma once
-
+#include <iostream>
 #include <memory>
 #include <vector>
 #include <typeinfo>
 #include <typeindex>
+#include <stdexcept>
+#include <string>
 
-// Base class for all pointer types in the pool
-class PointerManagerBase {
-public:
-    virtual ~PointerManagerBase() = default;
-    virtual void* get() = 0;
-    virtual const std::type_info& getType() const = 0;
-};
-
-// Template class for handling specific pointer types
-template <typename T>
-class PointerManager : public PointerManagerBase {
-private:
-    std::unique_ptr<T> ptr;
-
-public:
-    PointerManager(T* raw_ptr) : ptr(raw_ptr) {}
-    
-    // Override to return raw pointer
-    void* get() override {
-        return static_cast<void*>(ptr.get());
-    }
-
-    // Override to return the type info
-    const std::type_info& getType() const override {
-        return typeid(T);
-    }
-};
-
-// The main class that manages all pointers
 class MixedPointerManager {
-private:
-    std::vector<std::unique_ptr<PointerManagerBase>> pool;
-
 public:
-    // Add a pointer of any type to the pool
-    template <typename T>
-    void addPointer(T* ptr) {
-        pool.push_back(std::make_unique<PointerManager<T>>(ptr));
+    // Default constructor
+    MixedPointerManager() = default;
+
+    // Delete copy constructor and assignment operator
+    MixedPointerManager(const MixedPointerManager&) = delete;
+    MixedPointerManager& operator=(const MixedPointerManager&) = delete;
+
+    // Move constructor
+    MixedPointerManager(MixedPointerManager&& other) noexcept = default;
+
+    // Move assignment operator
+    MixedPointerManager& operator=(MixedPointerManager&& other) noexcept = default;
+
+    // Destructor
+    ~MixedPointerManager() = default;
+
+    // Add an object of any type
+    template <typename T, typename... Args>
+    void add(Args&&... args) {
+        objects_.emplace_back(std::make_unique<Holder<T>>(std::forward<Args>(args)...));
     }
 
-    // Get the pointer at a particular index, safely cast to the required type
+    // Get an object by index and type
     template <typename T>
-    T* getPointer(std::size_t index) {
-        if (index < pool.size() && pool[index]->getType() == typeid(T)) {
-            return static_cast<T*>(pool[index]->get());
-        } else {
-            std::cerr << "Invalid type or index!" << std::endl;
-            return nullptr;
+    T* get(std::size_t index) const {
+        if (index >= objects_.size()) {
+            throw std::out_of_range("Index out of range.");
         }
+        auto* holder = dynamic_cast<Holder<T>*>(objects_[index].get());
+        if (!holder) {
+            throw std::bad_cast();
+        }
+        return &holder->value;
     }
 
-    // Print types of all stored pointers for debugging
-    void printTypes() const {
-        for (const auto& item : pool) {
-            std::cout << "Stored pointer type: " << item->getType().name() << std::endl;
+    // Remove an object by index
+    void remove(std::size_t index) {
+        if (index >= objects_.size()) {
+            throw std::out_of_range("Index out of range.");
         }
+        objects_.erase(objects_.begin() + index);
     }
+
+    // Clear all managed objects
+    void clear() {
+        objects_.clear();
+    }
+
+    // Get the number of managed objects
+    std::size_t size() const noexcept {
+        return objects_.size();
+    }
+
+private:
+    // Base class for type erasure
+    struct BaseHolder {
+        virtual ~BaseHolder() = default;
+    };
+
+    // Derived holder to manage objects of any type
+    template <typename T>
+    struct Holder : BaseHolder {
+        T value;
+
+        explicit Holder(T&& val) : value(std::forward<T>(val)) {}
+        template <typename... Args>
+        explicit Holder(Args&&... args) : value(std::forward<Args>(args)...) {}
+    };
+
+    std::vector<std::unique_ptr<BaseHolder>> objects_; // Collection of objects
 };
-
 

@@ -1,50 +1,55 @@
-#include <cstdlib>
 #include <iostream>
 #include <string>
+#include <tuple>
 #include "ptrmgr.h"
 
-// Example structs for mixed types
-struct A {
-    int value;
-    A(int v) : value(v) {}
-};
+// Define an aggregate struct
+struct Person {
+    std::string name;
+    int age;
+    double height;
 
-struct B {
-    double value;
-    B(double v) : value(v) {}
-};
-
-struct C {
-    std::string value;
-    C(std::string v) : value(v) {}
+    // Custom output for demonstration
+    void print() const {
+        std::cout << "Person{name: " << name << ", age: " << age << ", height: " << height << "}\n";
+    }
 };
 
 int main() {
     MixedPointerManager manager;
-    
-    // Add different types of pointers to the manager
-	manager.addPointer(new A(10));
-	manager.addPointer(new B(3.14));
-	manager.addPointer(new C("Now is the time."));
 
-	// Access them by type
-	A* aPtr = manager.getPointer<A>(0);
-	if (aPtr) {
-		std::cout << "A pointer value: " << aPtr->value << std::endl;
-	}
+    // Add individual types
+    manager.add<int>(42);
+    manager.add<std::string>("Hello, World!");
+    manager.add<double>(3.14159);
 
-	B* bPtr = manager.getPointer<B>(1);
-	if (bPtr) {
-		std::cout << "B pointer value: " << bPtr->value << std::endl;
-	}
+    // Add structs of aggregate types
+    //manager.add<Person>("John Doe", 30, 5.9);
+	manager.add<Person>(Person{"John Doe", 30, 5.9});
+    //manager.add<Person>("Jane Smith", 28, 5.7);
 
-	C* cPtr = manager.getPointer<C>(2);
-	if (cPtr) {
-		std::cout << "C pointer value: " << cPtr->value << std::endl;
-	}
+    // Access and use individual objects
+    try {
+        auto* intObj = manager.get<int>(0);
+        auto* strObj = manager.get<std::string>(1);
+        auto* doubleObj = manager.get<double>(2);
 
-	// Print all types stored in the pool
-	manager.printTypes();
+        std::cout << "Integer: " << *intObj << "\n";
+        std::cout << "String: " << *strObj << "\n";
+        std::cout << "Double: " << *doubleObj << "\n";
 
-	return EXIT_SUCCESS;
+        // Access and use structs
+        auto* person1 = manager.get<Person>(3);
+        //auto* person2 = manager.get<Person>(4);
+
+        std::cout << "First Person: ";
+        person1->print();
+        //std::cout << "Second Person: ";
+        //person2->print();
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+    }
+
+    return 0;
 }
+

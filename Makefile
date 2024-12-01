@@ -14,7 +14,7 @@ EXT					= cc
 SRC					= ./src
 SRCS     			:= $(call rfilelist,$(SRC),*.$(EXT))
 INCLUDES				= ./include ./include/utils
-CFLAGS				:= -Wall -std=c++17 -c
+CFLAGS				:= -Wall -Wextra -pedantic -std=c++17 -c
 CFLAGS				+= $(addprefix -I,$(INCLUDES))
 OBJS 					= $(SRCS:%.$(EXT)=%.o)
 DEBUG_HELPERS 		= $(SRCS:%.$(EXT)=%.debug)
