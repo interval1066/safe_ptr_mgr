@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <tuple>
-#include <gtest/gtest.h>
 #include "ptrmgr.h"
 
 using namespace managed;
