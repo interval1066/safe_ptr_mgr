@@ -5,11 +5,15 @@
 #include <typeindex>
 #include <stdexcept>
 #include <string>
+#include <shared_mutex>
 #include <mutex>
+#include <atomic>
 
 class MixedPointerManager {
 public:
-    MixedPointerManager() = default;
+    MixedPointerManager() {
+        objects_.reserve(16); // Preallocate memory for initial objects
+    }
 
     // Delete copy constructor and assignment operator
     MixedPointerManager(const MixedPointerManager&) = delete;
@@ -27,15 +31,19 @@ public:
     // Add an object of any type
     template <typename T, typename... Args>
     void add(Args&&... args) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        objects_.emplace_back(std::make_unique<Holder<T>>(std::forward<Args>(args)...));
+        auto holder = std::make_unique<Holder<T>>(std::forward<Args>(args)...);
+        {
+            std::unique_lock lock(mutex_);
+            objects_.emplace_back(std::move(holder));
+            ++size_; // Increment size atomically
+        }
     }
 
     // Get an object by index and type
     template <typename T>
     T* get(std::size_t index) const {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (index >= objects_.size()) {
+        std::shared_lock lock(mutex_);
+        if (index >= size_) { // Use atomic size_
             throw std::out_of_range("Index out of range.");
         }
         auto* holder = dynamic_cast<Holder<T>*>(objects_[index].get());
@@ -47,23 +55,24 @@ public:
 
     // Remove an object by index
     void remove(std::size_t index) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (index >= objects_.size()) {
+        std::unique_lock lock(mutex_);
+        if (index >= size_) {
             throw std::out_of_range("Index out of range.");
         }
         objects_.erase(objects_.begin() + index);
+        --size_; // Decrement size atomically
     }
 
     // Clear all managed objects
     void clear() {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::unique_lock lock(mutex_);
         objects_.clear();
+        size_ = 0; // Reset size atomically
     }
 
     // Get the number of managed objects
     std::size_t size() const noexcept {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return objects_.size();
+        return size_.load(); // Atomic read
     }
 
 private:
@@ -82,7 +91,8 @@ private:
         explicit Holder(Args&&... args) : value(std::forward<Args>(args)...) {}
     };
 
-    mutable std::mutex mutex_; // Mutex to synchronize access
-    std::vector<std::unique_ptr<BaseHolder>> objects_; // Collection of objects
+    mutable std::shared_mutex mutex_;                       // Shared mutex for fine-grained locking
+    std::vector<std::unique_ptr<BaseHolder>> objects_;      // Collection of objects
+    std::atomic<std::size_t> size_{0};                      // Atomic size for fast read access
 };
 
