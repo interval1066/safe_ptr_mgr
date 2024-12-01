@@ -4,6 +4,8 @@
 #include <gtest/gtest.h>
 #include "ptrmgr.h"
 
+using namespace managed;
+
 // Define an aggregate struct
 struct Person {
     std::string name;
