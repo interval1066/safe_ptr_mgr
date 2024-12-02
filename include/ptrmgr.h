@@ -12,6 +12,25 @@
 namespace managed
 {
 	class MixedPointerManager {
+		// Base class for type erasure
+		struct BaseHolder {
+			virtual ~BaseHolder() = default;
+		};
+
+		// Derived holder to manage objects of any type
+		template <typename T>
+		struct Holder : BaseHolder {
+			T value;
+
+			explicit Holder(T&& val) : value(std::forward<T>(val)) {}
+			template <typename... Args>
+			explicit Holder(Args&&... args) : value(std::forward<Args>(args)...) {}
+		};
+
+		mutable std::shared_mutex mutex_;                       // Shared mutex for fine-grained locking
+		std::vector<std::unique_ptr<BaseHolder>> objects_;      // Collection of objects
+		std::atomic<std::size_t> size_{0};                      // Atomic size for fast read access
+
 	public:
 		MixedPointerManager() {
 			objects_.reserve(16); // Preallocate memory for initial objects
@@ -76,26 +95,6 @@ namespace managed
 		std::size_t size() const noexcept {
 			return size_.load(); // Atomic read
 		}
-
-	private:
-		// Base class for type erasure
-		struct BaseHolder {
-			virtual ~BaseHolder() = default;
-		};
-
-		// Derived holder to manage objects of any type
-		template <typename T>
-		struct Holder : BaseHolder {
-			T value;
-
-			explicit Holder(T&& val) : value(std::forward<T>(val)) {}
-			template <typename... Args>
-			explicit Holder(Args&&... args) : value(std::forward<Args>(args)...) {}
-		};
-
-		mutable std::shared_mutex mutex_;                       // Shared mutex for fine-grained locking
-		std::vector<std::unique_ptr<BaseHolder>> objects_;      // Collection of objects
-		std::atomic<std::size_t> size_{0};                      // Atomic size for fast read access
 	};
 }
 
